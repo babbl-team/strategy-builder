@@ -23,7 +23,7 @@ class UptrendsWrapper:
         self.dev_api_base = os.environ.get("DEV_UPTRENDS_BASE_API")
         self.prod_api_base = os.environ.get("PROD_UPTRENDS_BASE_API")
 
-        self.api_base = self.prod_api_base
+        self.api_base = self.dev_api_base
         
         # Let's grab a session ID
         sess_resp = requests.get(self.api_base+f"/sessions/?user_key={self.api_key}")
@@ -128,15 +128,8 @@ class UptrendsWrapper:
 if __name__=="__main__":
     api = UptrendsWrapper(verbose=True)
     alerts = api.get_alert_objs(since_days_ago=7, until_days_ago=0)
-    timelineRes = api.get_ticker_timeline_5m(ticker='TSLA', since_dt=datetime.datetime.now() - datetime.timedelta(days=7), until_dt=datetime.datetime.now())
+    timelineRes = api.get_ticker_timeline_hourly(ticker='TSLA', since_dt=datetime.datetime.now() - datetime.timedelta(days=7), until_dt=datetime.datetime.now())
     print(len(timelineRes.data))
-
-
-
-
-
-
-
 
 
     # tsla_alerts = api.get_alert_objs(

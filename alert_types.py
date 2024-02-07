@@ -38,6 +38,7 @@ class AlertDirectionEnum(str, Enum):
     bullish="Bullish"
     volatility="Volatility"
     unclear="Unclear"
+    mixed="Mixed"
 
 class AlertTimesenseEnum(str, Enum):
     speculative="Speculative"

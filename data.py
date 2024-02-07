@@ -127,9 +127,13 @@ class UptrendsWrapper:
 
 if __name__=="__main__":
     api = UptrendsWrapper(verbose=True)
-    alerts = api.get_alert_objs(since_days_ago=7, until_days_ago=0)
-    timelineRes = api.get_ticker_timeline_hourly(ticker='TSLA', since_dt=datetime.datetime.now() - datetime.timedelta(days=7), until_dt=datetime.datetime.now())
-    print(len(timelineRes.data))
+    alerts = api.get_alert_objs(since_days_ago=100, until_days_ago=0, ticker='NVDA')
+    # timelineRes = api.get_ticker_timeline_hourly(ticker='TSLA', since_dt=datetime.datetime.now() - datetime.timedelta(days=7), until_dt=datetime.datetime.now())
+    # print(len(timelineRes.data))
+    # for alert in alerts:
+
+    for alert in alerts:
+        print(json.loads(alert.model_dump_json(indent=2))['observed']['rank'], json.loads(alert.model_dump_json(indent=2))['alert_day'])
 
 
     # tsla_alerts = api.get_alert_objs(

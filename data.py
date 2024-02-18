@@ -5,16 +5,22 @@ import os
 import requests
 from typing import List, Optional
 import json
-import prices
 import datetime
 import pandas as pd
 
 # Loads 'env.shared' data into os.environ
 load_dotenv(".env.shared")
+load_dotenv(".env")
 
 from alert_types import SentimentSpikeAlert
-from schemas import UnifiedTimeline, AggPeriod
-
+from schemas import (
+    UnifiedTimeline, 
+    AggPeriod,
+    TrendingAlert, 
+    TrendingAlertFeedResponse, 
+    TrendingTopicEntry,
+)
+from utils import print_failure, print_info, print_success, print_warning, truncate_fill_str
 
 class UptrendsWrapper:
     def __init__(self, verbose:bool = False):
@@ -35,9 +41,12 @@ class UptrendsWrapper:
             sess_d = sess_resp.json()
             self.session_id = sess_d["session_id"]
             if self.verbose:
-                print(f"[INFO][UW.__init__] Got session ID {self.session_id}")
+                print_success(f"[INFO][UW.__init__] Got session ID {self.session_id}")
+        if self.verbose:
+            print_success(f"[INFO][UptrendsWrapper] initialized with API base {self.api_base}, verbose={self.verbose}")
         
     def get_alert_objs(self, since_days_ago: int=7, until_days_ago: int=0, max_results:int=200, ticker: Optional[str]=None):
+        print_warning(f"!![warning] get_alert_objs is deprecated, use get_trending_alert_objs instead\n  Attempting anyways, results might be weird")
         arg_str = f"since={since_days_ago}&until={until_days_ago}&max_results={max_results}"
         if ticker is not None:
             ticker = ticker.upper()
@@ -45,15 +54,40 @@ class UptrendsWrapper:
             arg_str += f"&ticker={ticker}"
 
         alert_resp = requests.get(f"{self.api_base}/events/feed/alerts?{arg_str}")
-        # print(alert_resp.status_code)
         alert_d = alert_resp.json()
         alerts_lst: List[dict] = alert_d["data"]
 
         alerts_objs = [SentimentSpikeAlert.model_validate(x) for x in alerts_lst]
         
         if self.verbose:
-            print(f"[INFO][UW.get_alert_objs] Got {len(alerts_objs)} alerts, ticker set to '{ticker}'")
+            print_success(f"[INFO][UW.get_alert_objs] Got {len(alerts_objs)} alerts, ticker set to '{ticker}'")
         return alerts_objs
+    
+    def get_trending_alert_objs(self, since_days_ago: int=7, max_results:int=200, ticker: Optional[str]=None) -> List[TrendingAlert]:
+        #arg_str = f"since={since_days_ago}&max_alerts={max_results}"
+        key_ = os.environ.get("ALERTS_ACCESS_KEY")
+        arg_str = f"key={key_}&since={since_days_ago}"
+        min_dt = datetime.datetime.now() - datetime.timedelta(days=since_days_ago)
+        if ticker is not None:
+            ticker = ticker.upper()
+            # add in the ticker arg
+            #arg_str += f"&ticker={ticker}"
+            print_warning(f"[warning] ticker arg not supported for trending alerts (yet)")
+
+        trending_alert_resp = requests.get(f"{self.api_base}/alerts/trending/all?{arg_str}")
+        if trending_alert_resp.status_code != 200:
+            print_failure(f"[ERROR][UW.get_trending_alert_objs] Got status code {trending_alert_resp.status_code} from API ({self.api_base}, args: {arg_str})")
+            print_warning(truncate_fill_str(trending_alert_resp.text, length=130))
+            if trending_alert_resp.status_code == 403:
+                print_info(f"NOTE: Did you remember to create a .env file with the 'ALERTS_ACCESS_KEY' variable?")
+            return []
+        
+        trending_alert_d = trending_alert_resp.json()
+        alert_resp_obj = TrendingAlertFeedResponse.model_validate(trending_alert_d)
+        if self.verbose:
+            filter_cap_str = "" if len(alert_resp_obj.alerts) <= max_results else f" (filtered to {max_results})"
+            print_success(f"[INFO][UW.get_trending_alert_objs] Got {len(alert_resp_obj.alerts)} alerts since {min_dt.date().isoformat()}{filter_cap_str}")
+        return alert_resp_obj.alerts[:max_results]
     
     def _get_ticker_timeline_generic(
             self,
@@ -127,13 +161,16 @@ class UptrendsWrapper:
 
 if __name__=="__main__":
     api = UptrendsWrapper(verbose=True)
-    alerts = api.get_alert_objs(since_days_ago=100, until_days_ago=0, ticker='NVDA')
-    # timelineRes = api.get_ticker_timeline_hourly(ticker='TSLA', since_dt=datetime.datetime.now() - datetime.timedelta(days=7), until_dt=datetime.datetime.now())
-    # print(len(timelineRes.data))
-    # for alert in alerts:
-
+    """
     for alert in alerts:
         print(json.loads(alert.model_dump_json(indent=2))['observed']['rank'], json.loads(alert.model_dump_json(indent=2))['alert_day'])
+    """
+    trending_alerts = api.get_trending_alert_objs(since_days_ago=7)
+    example_trending_alert = trending_alerts[0]
+    print_info("Example Trending Alert:")
+    print(example_trending_alert.model_dump_json(indent=2, exclude={"snippet_texts"}))
+    print(f"... (excluded obj field(s): 'snippet_texts')")
+    print("\n")
 
 
     # tsla_alerts = api.get_alert_objs(

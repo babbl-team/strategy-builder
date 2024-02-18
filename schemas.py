@@ -11,6 +11,9 @@ from typing import (
     List, Union, Optional, 
     Generic, TypeVar, Literal
 )
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning)
 
 
 # JSON encoder for datetime objs
@@ -201,3 +204,57 @@ class UnifiedTimeline(Baseline):
     agg_period: AggPeriod
     data: List[UnifiedTick]
     future_events: Optional[List[Union[EarningsTickInput, FilingTickInput]]]
+
+
+## [ Stock Portfolio Models ] ##
+
+class PortfolioEntry(Baseline): 
+    ticker: str
+    entry_dt: datetime.datetime
+    entry_price: float
+    shares: int 
+    is_open: Optional[bool] = True
+    exit_dt: Optional[datetime.datetime] = None
+    exit_price: Optional[float] = None
+
+class AlertKpi(Baseline):
+    kpi_name: str
+    kpi_value: str
+    kpi_direction: str
+
+class TrendingAlert(Baseline): 
+    processed_dt: datetime.datetime
+    alert_type_name: str
+    alert_type_id: str
+    ticker: str
+    logo_url: str
+    company_name: str
+    snippet_texts: list[str]
+    alert_direction: str
+    alert_summary: str
+    alert_kpis: Optional[List[AlertKpi]] = []
+    is_public: bool
+    target_mentions: Optional[int] = None
+    anom_score: Optional[float] = None
+
+class TrendingAlertFeedResponse(Baseline):
+    alerts: List[TrendingAlert]
+
+
+class TrendingTopicEntry(Baseline):
+    topic_id: str
+
+    # Fields from the DB
+    topic_desc: str
+    mentions: Optional[int] = 0
+    topic_date: datetime.datetime
+
+    # Generated or scored fields
+    topic_summary: str
+    key_tickers: List[str]
+    key_entities: List[str]
+    anom_score: float
+
+class TopicsTrendingResp(Baseline):
+    trending_topics: List[TrendingTopicEntry]
+    since: datetime.datetime
